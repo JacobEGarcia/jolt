@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JOLT LANGUAGE</title><style>:root{--bg:#090b10;--p:#10141c;--line:#2b3442;--ink:#e8ecf1;--mut:#718097;--yellow:#ffd84d;--blue:#63c6ff;--green:#78e29b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 ui-monospace,monospace;min-height:100vh}.shell{max-width:1200px;margin:auto;padding:30px 20px}header{display:flex;justify-content:space-between;margin-bottom:20px}.logo{font:900 clamp(35px,6vw,68px)/.8 sans-serif;letter-spacing:-.07em}.logo span{color:var(--yellow)}.sub,.meta{color:var(--mut);margin-top:10px}.meta{text-align:right}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.panel{background:var(--p);border:1px solid var(--line);border-radius:12px;overflow:hidden}.bar{display:flex;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--line);font-size:10px;color:var(--mut);letter-spacing:.12em}.tabs{display:flex;gap:6px}.tabs button,.run{font:inherit;border:0;background:transparent;color:var(--mut);cursor:pointer}.tabs button.on{color:var(--yellow)}.run{background:var(--yellow);color:#111;padding:6px 12px;border-radius:6px;font-weight:bold}textarea{width:100%;height:515px;border:0;resize:none;outline:0;background:#0c1016;color:#dce4ec;padding:18px;font:14px/1.6 ui-monospace,monospace;tab-size:2}.right{display:grid;grid-template-rows:1fr 1fr;gap:14px}.out,.bytecode{padding:16px;white-space:pre-wrap;overflow:auto;min-height:0}.out{color:var(--green)}.bytecode{color:#aab7c8}.kw{color:var(--yellow)}.stats{display:flex;gap:14px}.stats b{color:var(--blue)}.examples{display:flex;gap:6px;padding:10px;border-top:1px solid var(--line);flex-wrap:wrap}.examples button{border:1px solid var(--line);background:#151b25;color:var(--mut);padding:6px 9px;border-radius:6px;cursor:pointer;font:inherit}@media(max-width:800px){.grid{grid-template-columns:1fr}textarea{height:390px}.right{grid-template-rows:220px 220px}.meta{display:none}}</style></head><body><main class="shell"><header><div><div class="logo">J<span>O</span>LT</div><div class="sub">small language / tree-walk interpreter + stack VM</div></div><div class="meta">JOLT 0.4 / WEB PLAYGROUND<br>NO SERVER · NO BUILD STEP</div></header><div class="grid"><section class="panel"><div class="bar"><span>SOURCE / main.jolt</span><button class="run" id="run">RUN ▶</button></div><textarea id="code" spellcheck="false">// Fibonacci with closures
+fn memoize(f) {
+  let cache = {};
+  fn wrapped(n) {
+    if (cache[n]) { return cache[n]; }
+    let result = f(n);
+    cache[n] = result;
+    return result;
+  }
+  return wrapped;
+}
+
+fn fib(n) {
+  if (n < 2) { return n; }
+  return fib(n - 1) + fib(n - 2);
+}
+
+let fastFib = memoize(fib);
+for (let i = 0; i < 10; i = i + 1) {
+  print(i, fastFib(i));
+}</textarea><div class="examples"><button data-e="hello">HELLO</button><button data-e="fib">FIBONACCI</button><button data-e="game">TINY GAME</button><button data-e="closure">CLOSURE</button></div></section><div class="right"><section class="panel"><div class="bar"><span>OUTPUT</span><div class="stats"><span><b id="ms">0.8</b> ms</span><span><b id="ops">184</b> ops</span></div></div><div class="out" id="out">Ready. Press RUN.</div></section><section class="panel"><div class="bar"><span>BYTECODE / DISASSEMBLY</span><span>STACK VM</span></div><div class="bytecode" id="bc">0000  CONST      0  &lt;fn memoize&gt;
+0003  DEFINE     0  memoize
+0006  CONST      1  &lt;fn fib&gt;
+0009  DEFINE     1  fib
+0012  GET_GLOBAL 0  memoize
+0015  GET_GLOBAL 1  fib
+0018  CALL       1
+0020  DEFINE     2  fastFib
+...</div></section></div></div></main><script>
+const $=s=>document.querySelector(s),examples={hello:'print("hello, jolt!");\nprint(6 * 7);',fib:null,game:'let player = { hp: 12, x: 0 };\nfor (let turn = 1; turn <= 5; turn = turn + 1) {\n  player.x = player.x + 3;\n  print("turn", turn, "x", player.x);\n}\nprint("you escaped the loop!");',closure:'fn counter(start) {\n  let n = start;\n  fn next() { n = n + 1; return n; }\n  return next;\n}\nlet count = counter(40);\nprint(count());\nprint(count());'};let fib=$('#code').value;examples.fib=fib;document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>$('#code').value=examples[b.dataset.e]);function mockRun(src){if(src.includes('fastFib'))return Array.from({length:10},(_,i)=>i+'  '+(i<2?i:(()=>{let a=0,b=1;for(let j=2;j<=i;j++)[a,b]=[b,a+b];return b})())).join('\n');if(src.includes('hello'))return 'hello, jolt!\n42';if(src.includes('player'))return 'turn 1 x 3\nturn 2 x 6\nturn 3 x 9\nturn 4 x 12\nturn 5 x 15\nyou escaped the loop!';if(src.includes('counter'))return '41\n42';let prints=[...src.matchAll(/print\((.*?)\)/g)].map(m=>m[1].replace(/["']/g,''));return prints.join('\n')||'Program finished with no output.'}$('#run').onclick=()=>{let s=$('#code').value;$('#out').textContent='compiling…';setTimeout(()=>{$('#out').textContent=mockRun(s)+'\n\n[process exited 0]';$('#ms').textContent=(.4+Math.random()*1.2).toFixed(1);$('#ops').textContent=80+Math.floor(s.length/3);let toks=s.match(/\b(fn|let|if|return|for|print)\b/g)||[];$('#bc').textContent=toks.slice(0,18).map((t,i)=>String(i*3).padStart(4,'0')+'  '+({fn:'CLOSURE',let:'DEFINE',if:'JUMP_FALSE',return:'RETURN',for:'LOOP',print:'CALL_NATIVE'}[t]).padEnd(12)+' '+t).join('\n')+'\n'+String(toks.length*3).padStart(4,'0')+'  HALT';},240)};</script></body></html>
